@@ -34,6 +34,9 @@
 ;; change `org-directory'. It must be set before org loads!
 (setq org-directory "~/org/")
 
+;; Start Emacs frame maximized
+(add-hook `window-setup-hook `toggle-frame-maximized t)
+
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
 ;; - `load!' for loading external *.el files relative to this one
