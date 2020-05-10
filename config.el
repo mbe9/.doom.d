@@ -16,7 +16,11 @@
       company-idle-delay nil
 
       lsp-ui-sideline-enable nil
-      lsp-enable-symbol-highlighting nil)
+      lsp-enable-symbol-highlighting nil
+      )
+
+;; Prefer opening popup windows to the side, not at the bottom
+(plist-put +popup-defaults :side 'right)
 
 ;; Doom exposes five (optional) variables for controlling fonts in Doom. Here
 ;; are the three important ones:
