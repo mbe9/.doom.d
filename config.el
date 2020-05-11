@@ -13,8 +13,6 @@
 
       display-line-numbers-type nil
 
-      company-idle-delay nil
-
       lsp-ui-sideline-enable nil
       lsp-enable-symbol-highlighting nil
       )
