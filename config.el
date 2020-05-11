@@ -42,6 +42,9 @@
 ;; Start Emacs frame maximized
 (add-hook `window-setup-hook `toggle-frame-maximized t)
 
+(use-package aggressive-indent
+  :hook (prog-mode . aggressive-indent-mode))
+
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
 ;; - `load!' for loading external *.el files relative to this one
