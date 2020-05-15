@@ -18,8 +18,8 @@
       )
 
 ;; Prefer opening popup windows to the side, not at the bottom
-(plist-put +popup-defaults :side 'right)
-(plist-put +popup-defaults :width 0.5)
+;; (plist-put +popup-defaults :side 'right)
+;; (plist-put +popup-defaults :width 0.5)
 
 ;; Doom exposes five (optional) variables for controlling fonts in Doom. Here
 ;; are the three important ones:
