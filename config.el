@@ -43,6 +43,9 @@
 (use-package aggressive-indent
   :hook (prog-mode . aggressive-indent-mode))
 
+(use-package rainbow-delimiters
+  :hook (prog-mode . rainbow-delimiters-mode))
+
 ;; Here are some additional functions/macros that could help you configure Doom:
 ;;
 ;; - `load!' for loading external *.el files relative to this one
