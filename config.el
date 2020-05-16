@@ -15,6 +15,11 @@
 
       lsp-ui-sideline-enable nil
       lsp-enable-symbol-highlighting nil
+
+      ;; Use the same font size for Zen mode
+      +zen-text-scale 0
+      ;; Increase default line width for Zen mode
+      writeroom-width 120
       )
 
 ;; Prefer opening popup windows to the side, not at the bottom
