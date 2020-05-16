@@ -11,7 +11,7 @@
 
       doom-theme 'doom-one
 
-      display-line-numbers-type nil
+      display-line-numbers-type 'relative
 
       lsp-ui-sideline-enable nil
       lsp-enable-symbol-highlighting nil
@@ -39,6 +39,15 @@
 
 ;; Start Emacs frame maximized
 (add-hook `window-setup-hook `toggle-frame-maximized t)
+
+;; Enable relative line number when there is only one active window
+;; When more windows are added, disable line numbers everywhere
+;; This is done mainly for performance since Emacs is abysmally slow with line numbers
+;; on multiple windows (but one window is ok because logic)
+(add-hook `window-configuration-change-hook
+          (lambda () (if (and (derived-mode-p 'prog-mode) (one-window-p))
+                         (global-display-line-numbers-mode +1)
+                       (global-display-line-numbers-mode -1))))
 
 (use-package aggressive-indent
   :hook (prog-mode . aggressive-indent-mode))
