@@ -54,8 +54,8 @@
                          (global-display-line-numbers-mode +1)
                        (global-display-line-numbers-mode -1))))
 
-(use-package aggressive-indent
-  :hook (prog-mode . aggressive-indent-mode))
+;; (use-package aggressive-indent
+;;   :hook (prog-mode . aggressive-indent-mode))
 
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
