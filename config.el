@@ -13,6 +13,11 @@
 
       display-line-numbers-type 'relative
 
+      ;; Increase delay to reduce fp popups
+      which-key-idle-delay 2.0
+
+      ;; I can wait, if it means less server crashes
+      lsp-idle-delay 2.5
       lsp-ui-sideline-enable nil
       lsp-enable-symbol-highlighting nil
 
