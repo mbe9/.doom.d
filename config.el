@@ -25,6 +25,9 @@
 (after! rustic
   (set-popup-rule! "^\\*rustic-compilation" :height 0.4))
 
+;; Try to get rid of screen flickering
+(add-to-list 'default-frame-alist '(inhibit-double-buffering . t))
+
 ;; Prefer opening popup windows to the side, not at the bottom
 ;; (plist-put +popup-defaults :side 'right)
 ;; (plist-put +popup-defaults :width 0.5)
