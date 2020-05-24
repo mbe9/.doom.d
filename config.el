@@ -21,6 +21,10 @@
       writeroom-width 120
       )
 
+;; POPUP RULES
+(after! rustic
+  (set-popup-rule! "^\\*rustic-compilation" :height 0.4))
+
 ;; Prefer opening popup windows to the side, not at the bottom
 ;; (plist-put +popup-defaults :side 'right)
 ;; (plist-put +popup-defaults :width 0.5)
