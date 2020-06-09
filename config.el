@@ -15,6 +15,11 @@
       lsp-ui-sideline-enable nil
       lsp-enable-symbol-highlighting nil
 
+      ;; Check files only on save and mode enable
+      flycheck-check-syntax-automatically '(save mode-enabled)
+      ;; Disable max error limit
+      flycheck-checker-error-threshold nil
+
       ;; Use the same font size for Zen mode
       +zen-text-scale 0
       ;; Increase default line width for Zen mode
