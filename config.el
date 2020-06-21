@@ -28,6 +28,10 @@
       magit-repository-directories '(("~/projects" . 2))
       )
 
+;; Do not hide non-active #ifdefs
+(after! emacs-ccls
+  (setq ccls-enable-skipped-ranges nil))
+
 ;; POPUP RULES
 (after! rustic
   (set-popup-rule! "^\\*rustic-compilation" :height 0.4))
