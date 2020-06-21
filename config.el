@@ -34,7 +34,7 @@
         flycheck-check-syntax-automatically '(save mode-enabled)))
 
 (after! lsp-mode
-  (setq lsp-idle-delay 2.5
+  (setq lsp-idle-delay 1.0
         lsp-enable-symbol-highlighting nil))
 
 (after! lsp-ui
