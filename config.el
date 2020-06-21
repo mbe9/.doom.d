@@ -24,6 +24,8 @@
       +zen-text-scale 0
       ;; Increase default line width for Zen mode
       writeroom-width 120
+
+      magit-repository-directories '(("~/projects" . 2))
       )
 
 ;; POPUP RULES
@@ -37,7 +39,6 @@
 ;; (plist-put +popup-defaults :side 'right)
 ;; (plist-put +popup-defaults :width 0.5)
 
-(setq doom-font (font-spec :family "monospace" :size 14))
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
@@ -60,3 +61,10 @@
 
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
+
+(cond
+ ((eq (system-name) "Archie")
+  (setq doom-font (font-spec :family "monospace" :size 12)))
+ (t
+  (setq doom-font (font-spec :family "monospace" :size 14)))
+ )
