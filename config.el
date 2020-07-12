@@ -18,6 +18,11 @@
       (t
        (setq doom-font (font-spec :family "monospace" :size 14))))
 
+;; Enable mouse support
+(unless window-system
+  (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
+  (global-set-key (kbd "<mouse-5>") 'scroll-up-line))
+
 (after! magit
   (setq magit-repository-directories '(("~/projects" . 2))))
 
