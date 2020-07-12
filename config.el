@@ -50,7 +50,7 @@
   (setq which-key-idle-delay 2.0))
 
 ;; Do not hide non-active #ifdefs
-(after! emacs-ccls
+(after! ccls
   (setq ccls-enable-skipped-ranges nil))
 
 ;; POPUP RULES
