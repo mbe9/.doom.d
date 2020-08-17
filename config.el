@@ -55,6 +55,7 @@
 
 ;; POPUP RULES
 (after! rustic
+  (setq rustic-lsp-server 'rust-analyzer)
   (set-popup-rule! "^\\*rustic-compilation" :height 0.4))
 
 ;; Try to get rid of screen flickering
