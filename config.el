@@ -18,10 +18,6 @@
       (t
        (setq doom-font (font-spec :family "monospace" :size 14))))
 
-
-(use-package! evil-terminal-cursor-changer
-  :hook (tty-setup . evil-terminal-cursor-changer-activate))
-
 ;; Enable mouse support in terminal
 (unless window-system
   (require 'mouse)
