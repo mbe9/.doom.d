@@ -18,10 +18,19 @@
       (t
        (setq doom-font (font-spec :family "monospace" :size 14))))
 
-;; Enable mouse support
+
+(use-package! evil-terminal-cursor-changer
+  :hook (tty-setup . evil-terminal-cursor-changer-activate))
+
+;; Enable mouse support in terminal
 (unless window-system
+  (require 'mouse)
+  (xterm-mouse-mode t)
+  (defun track-mouse (e))
+  (setq mouse-sel-mode t)
+  (global-set-key (kbd "<mouse-5>") 'scroll-up-line)
   (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
-  (global-set-key (kbd "<mouse-5>") 'scroll-up-line))
+  )
 
 (after! magit
   (setq magit-repository-directories '(("~/projects" . 2))))
