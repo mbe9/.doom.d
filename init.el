@@ -106,7 +106,7 @@
        tty               ; improve the terminal Emacs experience
 
        :lang
-       (gdscript +lsp)
+       (gdscript)
        ;;agda              ; types of types of types of types...
        (cc +lsp)                ; C/C++/Obj-C madness
        ;;clojure           ; java with a lisp
