@@ -88,3 +88,20 @@
 (use-package rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
+
+;; Replace stupid FALSE comparisons with human-readable ones
+;; fuck you Fabian
+(add-to-list 'font-lock-extra-managed-props 'display)
+(add-hook
+ 'c-mode-hook
+ (lambda ()
+   (font-lock-add-keywords nil
+                           '(
+                             ("\\(FALSE !=\\)" 1 '(face nil display "TRUE =="))
+                             ("\\(FALSE!=\\)" 1 '(face nil display "TRUE =="))
+                             ("\\(!=FALSE\\)" 1 '(face nil display "== TRUE"))
+                             ("\\(!= FALSE\\)" 1 '(face nil display "== TRUE"))
+                             )
+                           )
+   )
+ )
