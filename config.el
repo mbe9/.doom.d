@@ -1,22 +1,15 @@
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
-(defmacro is-device-laptop () '(string= (system-name) "Archie"))
-(defmacro is-device-main () '(string= (system-name) "Pavels-Mac-mini.local"))
-
 ;; General settings
 (setq user-full-name "Pavel Pletnev"
       user-mail-address "pletnev.pg@gmail.com"
 
-      doom-theme 'doom-one
+      doom-theme 'doom-molokai
 
-      display-line-numbers-type 'relative
+      display-line-numbers-type nil
+
+      doom-font (font-spec :family "Monaco" :size 13)
       )
-
-;; In an unlikely case I wish to use GUI
-(cond ((is-device-laptop)
-       (setq doom-font (font-spec :family "monospace" :size 12)))
-      (t
-       (setq doom-font (font-spec :family "monospace" :size 14))))
 
 ;; Enable mouse support in terminal
 (unless window-system
@@ -68,7 +61,7 @@
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
-(setq org-directory "~/org/")
+(setq org-directory "~/org")
 
 ;; Start Emacs frame maximized
 (add-hook `window-setup-hook `toggle-frame-maximized t)
@@ -85,7 +78,7 @@
 ;; (use-package aggressive-indent
 ;;   :hook (prog-mode . aggressive-indent-mode))
 
-(use-package rainbow-delimiters
+(use-package! rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
 
