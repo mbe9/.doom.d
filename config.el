@@ -9,6 +9,10 @@
       display-line-numbers-type nil
 
       doom-font (font-spec :family "Monaco" :size 13)
+
+      ;; Modeline settings
+      doom-modeline-lsp nil
+      doom-modeline-buffer-encoding nil
       )
 
 ;; Enable mouse support in terminal
@@ -38,10 +42,13 @@
 
 (after! lsp-mode
   (setq lsp-idle-delay 1.0
+        lsp-lens-enable nil
         lsp-enable-symbol-highlighting nil))
 
 (after! lsp-ui
-  (setq lsp-ui-sideline-enable nil))
+  (setq lsp-ui-sideline-enable nil)
+  (setq lsp-ui-doc-position 'top)
+  )
 
 ;; Increase delay to reduce fp popups
 (after! which-key
@@ -81,6 +88,8 @@
 (use-package! rainbow-delimiters
   :hook (prog-mode . rainbow-delimiters-mode))
 
+(use-package! company-prescient
+  :hook (prog-mode . company-prescient-mode))
 
 ;; Replace stupid FALSE comparisons with human-readable ones
 ;; fuck you Fabian
