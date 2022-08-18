@@ -15,6 +15,7 @@
 ;(unpin! t)
 
 (package! evil-terminal-cursor-changer)
+(package! company-prescient)
 
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;(package! some-package)
