@@ -8,12 +8,17 @@
 
       display-line-numbers-type nil
 
-      doom-font (font-spec :family "Monaco" :size 13)
+      doom-font (font-spec :family "monospace" :size 13)
 
       ;; Modeline settings
       doom-modeline-lsp nil
       doom-modeline-buffer-encoding nil
       )
+
+;; smooth(er) scrolling
+(setq mouse-wheel-scroll-amount '(1 ((shift) . 1)) ;; one line at a time
+      mouse-wheel-progressive-speed t ;; accelerate scrolling
+      mouse-wheel-follow-mouse 't) ;; scroll window under mouse
 
 ;; Enable mouse support in terminal
 (unless window-system
