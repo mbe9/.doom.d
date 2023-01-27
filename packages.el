@@ -14,6 +14,8 @@
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;(unpin! t)
 
+(package! straight :pin "3eca39d")
+
 (package! evil-terminal-cursor-changer)
 (package! company-prescient)
 (package! bazel)
