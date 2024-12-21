@@ -17,6 +17,7 @@
 (package! evil-terminal-cursor-changer)
 (package! company-prescient)
 (package! bazel)
+(package! just-mode)
 
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;(package! some-package)
