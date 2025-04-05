@@ -46,15 +46,25 @@
         flycheck-check-syntax-automatically '(save mode-enabled)))
 
 (after! lsp-mode
-  (setq lsp-idle-delay 1.0
-        lsp-lens-enable nil
-        lsp-enable-symbol-highlighting nil))
+  (add-to-list 'lsp-disabled-clients 'ccls-tramp))
+
+  ;; (setq lsp-idle-delay 1.0
+  ;;       lsp-lens-enable 't
+  ;;       lsp-enable-symbol-highlighting 't))
+
 
 (after! lsp-ui
   (setq lsp-ui-sideline-enable nil)
+  (setq lsp-ui-sideline-show-hover 't)
+  (setq lsp-ui-doc-enable 't)
+  (setq lsp-ui-doc-show-with-cursor 't)
   (setq lsp-ui-doc-position 'top)
+  (setq lsp-ui-doc-delay 0.5)
   )
 
+(after! projectile-mode
+  (setq projectile-indexing-method 'native)
+  )
 ;; Increase delay to reduce fp popups
 (after! which-key
   (setq which-key-idle-delay 2.0))
