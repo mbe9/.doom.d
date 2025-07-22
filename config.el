@@ -45,8 +45,8 @@
         ;; Check files only on save and mode enable
         flycheck-check-syntax-automatically '(save mode-enabled)))
 
-(after! lsp-mode
-  (add-to-list 'lsp-disabled-clients 'ccls-tramp))
+;; (after! lsp-mode
+;;   (add-to-list 'lsp-disabled-clients 'ccls-tramp))
 
   ;; (setq lsp-idle-delay 1.0
   ;;       lsp-lens-enable 't
