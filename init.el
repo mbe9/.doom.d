@@ -36,7 +36,7 @@
        ;;fill-column       ; a `fill-column' indicator
        hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
        ;;hydra
-       ;;indent-guides     ; highlighted indent columns
+       indent-guides     ; highlighted indent columns
        ;;ligatures         ; ligatures and symbols to make your code pretty again
        ;;minimap           ; show a map of the code on the side
        modeline          ; snazzy, Atom-inspired modeline, plus API
@@ -159,7 +159,7 @@
        qt                ; the 'cutest' gui framework ever
        ;;racket            ; a DSL for DSLs
        rest              ; Emacs as a REST client
-       ;;rst               ; ReST in peace
+       rst               ; ReST in peace
        ;;(ruby +rails)     ; 1.step {|i| p "Ruby is #{i.even? ? 'love' : 'life'}"}
        (rust +lsp)         ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
        ;;scala             ; java, but good
