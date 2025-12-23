@@ -4,7 +4,8 @@
 (setq user-full-name "Pavel Pletnev"
       user-mail-address "pletnev.pg@gmail.com"
 
-      doom-theme 'doom-molokai
+      ;; doom-theme 'doom-solarized-light
+      doom-theme 'doom-monokai-classic
 
       display-line-numbers-type nil
 
@@ -59,8 +60,8 @@
         ;; Check files only on save and mode enable
         flycheck-check-syntax-automatically '(save mode-enabled)))
 
-;; (after! lsp-mode
-;;   (add-to-list 'lsp-disabled-clients 'ccls-tramp))
+(after! lsp-mode
+  (add-to-list 'lsp-disabled-clients 'ccls-tramp))
 
   ;; (setq lsp-idle-delay 1.0
   ;;       lsp-lens-enable 't
@@ -74,8 +75,11 @@
   (setq lsp-ui-sideline-show-hover 't)
   (setq lsp-ui-doc-enable 't)
   (setq lsp-ui-doc-show-with-cursor 't)
+  (setq lsp-ui-doc-show-with-mouse 't)
   (setq lsp-ui-doc-position 'top)
   (setq lsp-ui-doc-delay 0.5)
+  (setq lsp-ui-doc-max-width 150)
+  (setq lsp-ui-doc-max-height 60)
   )
 
 (after! projectile-mode
@@ -121,20 +125,3 @@
 
 (use-package! company-prescient
   :hook (prog-mode . company-prescient-mode))
-
-;; Replace stupid FALSE comparisons with human-readable ones
-;; fuck you Fabian
-(add-to-list 'font-lock-extra-managed-props 'display)
-(add-hook
- 'c-mode-hook
- (lambda ()
-   (font-lock-add-keywords nil
-                           '(
-                             ("\\(FALSE !=\\)" 1 '(face nil display "TRUE =="))
-                             ("\\(FALSE!=\\)" 1 '(face nil display "TRUE =="))
-                             ("\\(!=FALSE\\)" 1 '(face nil display "== TRUE"))
-                             ("\\(!= FALSE\\)" 1 '(face nil display "== TRUE"))
-                             )
-                           )
-   )
- )
