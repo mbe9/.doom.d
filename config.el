@@ -33,6 +33,20 @@
 (after! magit
   (setq magit-repository-directories '(("~/projects" . 2))))
 
+
+(after! tramp
+  (setq tramp-use-connection-share nil)
+  (setq tramp-verbose 1)
+  )
+
+;;; Disable LSP on remote files
+(after! lsp-mode
+  ;; Only disable for remote files
+  (add-hook 'find-file-hook
+            (lambda ()
+              (when (file-remote-p default-directory)
+                (setq-local lsp-enable-file-watchers nil)))))
+
 (after! writeroom-mode
   (setq
    ;; Use the same font size for Zen mode
@@ -52,6 +66,8 @@
   ;;       lsp-lens-enable 't
   ;;       lsp-enable-symbol-highlighting 't))
 
+(custom-set-variables
+ '(hcl-indent-level 4))
 
 (after! lsp-ui
   (setq lsp-ui-sideline-enable nil)

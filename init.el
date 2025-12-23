@@ -73,6 +73,7 @@
        ;;ibuffer         ; interactive buffer management
        undo              ; persistent, smarter undo for your inevitable mistakes
        vc                ; version-control and Emacs, sitting in a tree
+       tramp
 
        :term
        ;;eshell            ; the elisp shell that works everywhere
@@ -82,7 +83,7 @@
 
        :checkers
        syntax              ; tasing you for every semicolon you forget
-       (spell +aspell +everywhere)             ; tasing you for misspelling mispelling
+       ;(spell +aspell +everywhere)             ; tasing you for misspelling mispelling
        ;;grammar           ; tasing grammar mistake every you make
 
        :tools

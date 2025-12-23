@@ -18,6 +18,8 @@
 (package! company-prescient)
 (package! bazel)
 (package! just-mode)
+(package! hcl-mode)
+(package! rainbow-delimiters)
 
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;(package! some-package)
