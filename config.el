@@ -137,6 +137,33 @@
   (setq rustic-lsp-server 'rust-analyzer)
   (set-popup-rule! "^\\*rustic-compilation" :height 0.4))
 
+;;; GitLab CI: validate against the real instance.
+;;; yaml-language-server checks the static SchemaStore schema, which tracks
+;;; gitlab.com. `glab ci lint' asks the actual server (e.g. gitlab.nartis.ru),
+;;; so it resolves `include:' and reflects that instance's GitLab version.
+(defun +gitlab/ci-lint (&optional dry-run)
+  "Lint the current buffer's GitLab CI file with `glab ci lint'.
+With prefix arg DRY-RUN, also simulate pipeline creation."
+  (interactive "P")
+  (unless (executable-find "glab")
+    (user-error "glab not found in PATH"))
+  (let ((file (or buffer-file-name
+                  (user-error "Buffer is not visiting a file")))
+        (default-directory (or (doom-project-root) default-directory)))
+    (compile (format "glab ci lint %s%s"
+                     (shell-quote-argument file)
+                     (if dry-run " --dry-run --include-jobs" "")))))
+
+(after! yaml-mode
+  (map! :localleader
+        :map yaml-mode-map
+        :desc "GitLab CI lint" "l" #'+gitlab/ci-lint))
+
+(after! yaml-ts-mode
+  (map! :localleader
+        :map yaml-ts-mode-map
+        :desc "GitLab CI lint" "l" #'+gitlab/ci-lint))
+
 ;; Try to get rid of screen flickering
 (add-to-list 'default-frame-alist '(inhibit-double-buffering . t))
 
