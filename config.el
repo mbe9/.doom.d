@@ -191,3 +191,19 @@ With prefix arg DRY-RUN, also simulate pipeline creation."
 
 (use-package! company-prescient
   :hook (prog-mode . company-prescient-mode))
+
+;;; Restore full chroma to the tree-sitter font-lock faces.
+;;; doom-themes-base.el defines these as `doom-blend'-ed toward `fg', e.g.
+;;; punctuation keeps only ~26% of its CIELAB chroma (#F92660 -> #F8C3CD).
+;;; Under c++-ts-mode these faces cover ~9k chars that cc-mode left plain, so
+;;; the blending is what makes tree-sitter buffers look washed out.
+;;; `doom-color' is resolved on each theme load, so this survives a theme swap.
+;;; Not touched: `font-lock-variable-use-face' (variables = fg here, so the
+;;; blend is a no-op) and `font-lock-operator-face' (no blend to begin with).
+(custom-set-faces!
+  ;; was (doom-blend 'functions 'fg 0.7) + :slant italic
+  `(font-lock-function-call-face :foreground ,(doom-color 'functions) :slant normal)
+  ;; was (doom-blend 'keywords 'fg 0.6); -use-face inherits this
+  `(font-lock-property-name-face :foreground ,(doom-color 'keywords) :weight bold)
+  ;; was (doom-blend 'operators 'fg 0.25); delimiter/bracket/misc inherit this
+  `(font-lock-punctuation-face   :foreground ,(doom-color 'operators)))
