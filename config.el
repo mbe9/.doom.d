@@ -9,7 +9,7 @@
 
       display-line-numbers-type nil
 
-      doom-font (font-spec :family "monospace" :size 13)
+      doom-font (font-spec :family "monospace" :size 11.0)
 
       ;; Modeline settings
       doom-modeline-lsp nil
@@ -31,9 +31,6 @@
   (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
   )
 
-(add-to-list 'load-path "~/projects/emacs-tramp-rpc/lisp")
-(require 'tramp-rpc)
-
 (after! magit
   (setq magit-repository-directories '(("~/projects" . 2))))
 
@@ -44,11 +41,6 @@
                  "gitlab.nartis.ru/api/v4"
                  "gitlab.nartis.ru"
                  forge-gitlab-repository)))
-
-(after! tramp
-  (setq tramp-use-connection-share nil)
-  (setq tramp-verbose 1)
-  )
 
 ;;; Disable LSP file watchers everywhere.
 ;;; On large C/C++ trees (module_mms is ~19k sources plus generated out/ dirs)
