@@ -108,7 +108,12 @@
 
 (after! projectile
   (setq projectile-indexing-method 'native)
-  )
+  ;; Auto-register every repo under ~/projects. Depth 1 means "check each
+  ;; subdirectory of ~/projects", which picks up the 73 top-level repos and
+  ;; deliberately stops short of the ~135 git submodules nested inside them.
+  ;; `projectile-discover-projects-in-search-path' runs automatically when
+  ;; projectile-mode is enabled, so no manual discovery step is needed.
+  (setq projectile-project-search-path '(("~/projects" . 1))))
 ;; Increase delay to reduce fp popups
 (after! which-key
   (setq which-key-idle-delay 2.0))
@@ -207,3 +212,12 @@ With prefix arg DRY-RUN, also simulate pipeline creation."
   `(font-lock-property-name-face :foreground ,(doom-color 'keywords) :weight bold)
   ;; was (doom-blend 'operators 'fg 0.25); delimiter/bracket/misc inherit this
   `(font-lock-punctuation-face   :foreground ,(doom-color 'operators)))
+
+;;; vim-vinegar style: `-' opens dired in the current file's directory,
+;;; i.e. the same command `SPC o -' runs (+evil-bindings.el:696).
+;;; Evil's default `-' (`evil-previous-line-first-non-blank') lives in
+;;; `evil-motion-state-map', which normal state inherits, so this normal-state
+;;; binding takes precedence over it. Dired itself is unaffected:
+;;; evil-collection already binds `-' there to `dired-up-directory', and a
+;;; mode map wins over a global one.
+(map! :n "-" #'dired-jump)
