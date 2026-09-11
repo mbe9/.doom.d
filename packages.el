@@ -20,6 +20,7 @@
 (package! just-mode)
 (package! hcl-mode)
 (package! rainbow-delimiters)
+(package! majutsu :recipe (:host github :repo "0WD0/majutsu"))
 
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;(package! some-package)

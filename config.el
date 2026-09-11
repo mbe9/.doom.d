@@ -31,22 +31,36 @@
   (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
   )
 
+(add-to-list 'load-path "~/projects/emacs-tramp-rpc/lisp")
+(require 'tramp-rpc)
+
 (after! magit
   (setq magit-repository-directories '(("~/projects" . 2))))
 
+(setq auth-sources '("~/.authinfo"))
+(after! forge
+  (add-to-list 'forge-alist
+               '("gitlab.nartis.ru"
+                 "gitlab.nartis.ru/api/v4"
+                 "gitlab.nartis.ru"
+                 forge-gitlab-repository)))
 
 (after! tramp
   (setq tramp-use-connection-share nil)
   (setq tramp-verbose 1)
   )
 
-;;; Disable LSP on remote files
+;;; Disable LSP file watchers everywhere.
+;;; On large C/C++ trees (module_mms is ~19k sources plus generated out/ dirs)
+;;; lsp-mode registers thousands of watches at session start and stalls the UI.
 (after! lsp-mode
-  ;; Only disable for remote files
-  (add-hook 'find-file-hook
-            (lambda ()
-              (when (file-remote-p default-directory)
-                (setq-local lsp-enable-file-watchers nil)))))
+  (setq lsp-enable-file-watchers nil)
+  ;; Safety net for any client that re-enables them.
+  (setq lsp-file-watch-threshold 1000)
+  (dolist (dir '("[/\\\\]out\\'"
+                 "[/\\\\]build\\'"
+                 "[/\\\\]libraries\\'"))
+    (add-to-list 'lsp-file-watch-ignored-directories dir)))
 
 (after! writeroom-mode
   (setq
@@ -55,13 +69,21 @@
    ;; Increase default line width for Zen mode
    writeroom-width 120))
 
-(after! flycheck-mode
+(after! flycheck
   (setq flycheck-checker-error-threshold 1000
         ;; Check files only on save and mode enable
         flycheck-check-syntax-automatically '(save mode-enabled)))
 
 (after! lsp-mode
-  (add-to-list 'lsp-disabled-clients 'ccls-tramp))
+  (add-to-list 'lsp-disabled-clients 'ccls-tramp)
+  ;; Each of these issues an LSP request on cursor movement or on idle, which
+  ;; is the bulk of lsp-mode's latency relative to nvim. nvim's LazyVim setup
+  ;; has no codelens and no code-action polling at all.
+  (setq lsp-enable-symbol-highlighting nil    ; documentHighlight per move
+        lsp-lens-enable nil                   ; codeLens requests + refresh
+        lsp-modeline-code-actions-enable nil  ; codeAction at point, per move
+        lsp-eldoc-enable-hover nil            ; hover via eldoc, per move
+        lsp-idle-delay 0.75))
 
   ;; (setq lsp-idle-delay 1.0
   ;;       lsp-lens-enable 't
@@ -74,15 +96,17 @@
   (setq lsp-ui-sideline-enable nil)
   (setq lsp-ui-sideline-show-hover 't)
   (setq lsp-ui-doc-enable 't)
-  (setq lsp-ui-doc-show-with-cursor 't)
+  ;; Off: fires textDocument/hover + a child-frame render on every point
+  ;; move, which is the main source of lsp-mode input latency.
+  (setq lsp-ui-doc-show-with-cursor nil)
   (setq lsp-ui-doc-show-with-mouse 't)
   (setq lsp-ui-doc-position 'top)
   (setq lsp-ui-doc-delay 0.5)
-  (setq lsp-ui-doc-max-width 150)
-  (setq lsp-ui-doc-max-height 60)
+  (setq lsp-ui-doc-max-width 50)
+  (setq lsp-ui-doc-max-height 10)
   )
 
-(after! projectile-mode
+(after! projectile
   (setq projectile-indexing-method 'native)
   )
 ;; Increase delay to reduce fp popups
@@ -92,6 +116,21 @@
 ;; Do not hide non-active #ifdefs
 (after! ccls
   (setq ccls-enable-skipped-ranges nil))
+
+;;; C/C++ indentation under tree-sitter.
+;;; c++-ts-mode ignores `c-basic-offset' (which Doom sets from `tab-width');
+;;; it uses these two instead, defaulting to 2 and the GNU style. 'bsd matches
+;;; the project's .clang-format (BraceWrapping: AfterFunction/AfterClass/
+;;; AfterControlStatement all true, IndentBraces false = Allman).
+(after! c-ts-mode
+  (setq c-ts-mode-indent-offset 4
+        c-ts-mode-indent-style 'bsd))
+
+;;; Run clang-format on save in C/C++ buffers only.
+;;; apheleia (from :editor format) invokes the clang-format binary directly
+;;; with -assume-filename, so the nearest .clang-format is picked up.
+(add-hook! '(c-mode-hook c++-mode-hook c-ts-mode-hook c++-ts-mode-hook objc-mode-hook)
+           #'apheleia-mode)
 
 ;; POPUP RULES
 (after! rustic
