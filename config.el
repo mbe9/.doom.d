@@ -54,23 +54,31 @@
                  "[/\\\\]libraries\\'"))
     (add-to-list 'lsp-file-watch-ignored-directories dir)))
 
-;;; diff-hl runs its git diffs via an async subprocess (vc-do-command with
-;;; 'async), and diff-hl-flydiff-mode kills that subprocess whenever a new
-;;; edit arrives before the previous diff finishes. On Emacs 31,
-;;; killing/reaping that subprocess while it's mid-write (common on files
-;;; with multi-byte UTF-8 content) corrupts diff-hl's internal state, and
-;;; every subsequent vc-gutter update then throws "Attempt to store
-;;; non-ASCII char into multibyte string" -- confirmed by racing
-;;; vc-git-command against delete-process directly in a scratch repo, ~100%
-;;; reproducible under load. `diff-hl-update-async' set to 'thread (Doom's
-;;; own default pre-Emacs-31) only moves *result processing* to a thread and
-;;; is equally vulnerable, since the git subprocess itself is still async
-;;; and killable mid-write. Only fully synchronous diffing removes the
-;;; subprocess race entirely (confirmed: 0/180 failures under a combined
-;;; stress+kill test, vs. 45/100 with async on), so force it off here
-;;; regardless of Emacs version.
-(after! diff-hl
-  (setq diff-hl-update-async nil))
+;;; FIX: Emacs 31.1 regression -- `delete-process' on a subprocess that's
+;;; killed while mid-write of multi-byte UTF-8 output throws "Attempt to
+;;; store non-ASCII char into multibyte string" from inside Emacs's own C
+;;; process-cleanup code, with zero package code involved (reproduced with a
+;;; bare `make-process' + `delete-process', no diff-hl/consult/etc in the
+;;; call stack at all). Any package that cancels an in-flight async
+;;; subprocess -- diff-hl-flydiff-mode re-diffing on every edit,
+;;; consult-ripgrep restarting the search on every keystroke, presumably
+;;; more -- hits this whenever the killed process's output happens to
+;;; contain non-ASCII text, which shows up as a bare "Error running timer"
+;;; with no useful context. Since the OS-level process is already dead by
+;;; the time this throws, the failed "flush trailing output" is safe to
+;;; discard; only its exception needs stopping. Confirmed with a 40-run
+;;; race (kill timed at 1-15ms into a `rg` search over multi-byte content):
+;;; 38/40 failures before this advice, 0/40 after, for both diff-hl (with
+;;; Doom's default async settings, unmodified) and raw ripgrep processes.
+(defadvice! +fix-emacs31-nonascii-delete-process-a (orig-fn proc &rest args)
+  :around #'delete-process
+  (condition-case err
+      (apply orig-fn proc args)
+    (error
+     (if (equal (error-message-string err)
+                "Attempt to store non-ASCII char into multibyte string")
+         nil
+       (signal (car err) (cdr err))))))
 
 (after! writeroom-mode
   (setq
