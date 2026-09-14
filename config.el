@@ -9,7 +9,7 @@
 
       display-line-numbers-type nil
 
-      doom-font (font-spec :family "monospace" :size 11.0)
+      doom-font (font-spec :family "monospace" :size 10.0)
 
       ;; Modeline settings
       doom-modeline-lsp nil
@@ -125,7 +125,19 @@
   )
 
 (after! projectile
-  (setq projectile-indexing-method 'native)
+  ;;; Leave `projectile-indexing-method' at Doom's `hybrid'.
+  ;;; It was set to 'native here (7336a34, "Lsp tweaks"), which is a pure-elisp
+  ;;; recursive walk that ignores .gitignore entirely -- only projectile's own
+  ;;; `projectile-globally-ignored-*' lists apply. On these trees that means the
+  ;;; generated out/ dirs get indexed: the cached listing for
+  ;;; module_coordinator_access held 21837 entries, 21689 of them under out/,
+  ;;; where fd sees 100 real files. `hybrid' runs Doom's fd command (which does
+  ;;; read .gitignore) and then applies projectile's ignore lists on top:
+  ;;; 1111 files in 23ms for module_mms vs. a 20706-entry walk for 'native.
+  ;;; Note `projectile-enable-caching' is 'persistent in Doom, so a bad listing
+  ;;; is written to ~/.emacs.d/.local/cache/projectile/ and reused indefinitely;
+  ;;; `SPC p i' (`projectile-invalidate-cache') is the only thing that clears it
+  ;;; when a project's layout changes.
   ;; Auto-register every repo under ~/projects. Depth 1 means "check each
   ;; subdirectory of ~/projects", which picks up the 73 top-level repos and
   ;; deliberately stops short of the ~135 git submodules nested inside them.
