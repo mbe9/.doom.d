@@ -44,25 +44,15 @@
 
 ;;; Disable LSP file watchers everywhere.
 ;;; On large C/C++ trees (module_mms is ~19k sources plus generated out/ dirs)
-;;; registering thousands of watches at session start stalls the UI.
-;;; Eglot has no `lsp-enable-file-watchers' equivalent: it implements
-;;; `workspace/didChangeWatchedFiles' with `file-notify-add-watch', driven by
-;;; the server's *dynamic registration*, and clangd does register it.
-;;; `eglot-ignored-server-capabilities' does not cover this -- it filters
-;;; server capabilities, and this is a client one. So refuse it at the source:
-;;; eglot's default `eglot-client-capabilities' advertises
-;;; (:didChangeWatchedFiles (:dynamicRegistration t)) for non-TRAMP servers,
-;;; and answering :json-false instead is the protocol-correct way to tell the
-;;; server not to ask. No registration arrives, so nothing needs intercepting.
-(after! eglot
-  (defadvice! +eglot/refuse-file-watchers-a (caps)
-    :filter-return #'eglot-client-capabilities
-    (when-let* ((workspace (plist-get caps :workspace)))
-      ;; The key already exists, so `plist-put' mutates this freshly-consed
-      ;; plist in place rather than returning a new head.
-      (plist-put workspace :didChangeWatchedFiles
-                 '(:dynamicRegistration :json-false)))
-    caps))
+;;; lsp-mode registers thousands of watches at session start and stalls the UI.
+(after! lsp-mode
+  (setq lsp-enable-file-watchers nil)
+  ;; Safety net for any client that re-enables them.
+  (setq lsp-file-watch-threshold 1000)
+  (dolist (dir '("[/\\\\]out\\'"
+                 "[/\\\\]build\\'"
+                 "[/\\\\]libraries\\'"))
+    (add-to-list 'lsp-file-watch-ignored-directories dir)))
 
 ;;; FIX: Emacs 31.1 regression -- `delete-process' on a subprocess that's
 ;;; killed while mid-write of multi-byte UTF-8 output throws "Attempt to
@@ -102,43 +92,48 @@
         ;; Check files only on save and mode enable
         flycheck-check-syntax-automatically '(save mode-enabled)))
 
-;;; Same latency policy as under lsp-mode: nothing that issues an LSP request
-;;; on cursor movement. nvim's LazyVim setup has no codelens and no
-;;; code-action polling either, which is the bar this is measured against.
-;;; Declining a *server* capability is eglot's supported off switch, and it
-;;; also stops the corresponding request being sent at all.
-(after! eglot
-  (setq eglot-ignored-server-capabilities
-        '(:documentHighlightProvider   ; documentHighlight per move
-          :codeLensProvider            ; codeLens requests + refresh
-          :inlayHintProvider))         ; inlay hints re-render on every change
+(after! lsp-mode
+  (add-to-list 'lsp-disabled-clients 'ccls-tramp)
+  ;; Each of these issues an LSP request on cursor movement or on idle, which
+  ;; is the bulk of lsp-mode's latency relative to nvim. nvim's LazyVim setup
+  ;; has no codelens and no code-action polling at all.
+  (setq lsp-enable-symbol-highlighting nil    ; documentHighlight per move
+        lsp-lens-enable nil                   ; codeLens requests + refresh
+        lsp-modeline-code-actions-enable nil  ; codeAction at point, per move
+        lsp-eldoc-enable-hover nil            ; hover via eldoc, per move
+        lsp-idle-delay 0.75))
 
-  ;; Hover is the `lsp-eldoc-enable-hover nil' equivalent. Eglot routes hover
-  ;; through eldoc, so dropping its eldoc function stops the per-move
-  ;; textDocument/hover without declining :hoverProvider outright -- `K'
-  ;; (`+lookup/documentation') issues its own request and still works.
-  (add-hook! 'eglot-managed-mode-hook
-    (defun +eglot/no-hover-on-idle-h ()
-      (remove-hook 'eldoc-documentation-functions
-                   #'eglot-hover-eldoc-function t)))
-
-  ;; lsp-mode's `lsp-idle-delay' 0.75 analogue: how long after a keystroke the
-  ;; buffer's changes are flushed to the server. Eglot's default is 0.5.
-  (setq eglot-send-changes-idle-time 0.75))
+  ;; (setq lsp-idle-delay 1.0
+  ;;       lsp-lens-enable 't
+  ;;       lsp-enable-symbol-highlighting 't))
 
 (custom-set-variables
  '(hcl-indent-level 4))
 
-;;; lsp-ui has no eglot counterpart and is gone with lsp-mode. What it was
-;;; providing here was already only the on-demand paths: the sideline and both
-;;; automatic doc-frame triggers (cursor and mouse) were off for latency.
-;;; `K' (`+lookup/documentation') is wired to `+eglot-lookup-documentation' by
-;;; Doom's lsp module and covers the remaining use.
-;;; Dropping it also retires the `track-mouse' problem outright rather than
-;;; working around it: that was `lsp-ui-doc--make-request' on
-;;; `post-command-hook' forcing (setq-local track-mouse t), which turned every
-;;; pixel of pointer motion into a full command-loop iteration. Eglot puts
-;;; nothing equivalent on `post-command-hook'.
+(after! lsp-ui
+  (setq lsp-ui-sideline-enable nil)
+  (setq lsp-ui-sideline-show-hover 't)
+  (setq lsp-ui-doc-enable 't)
+  ;; Off: fires textDocument/hover + a child-frame render on every point
+  ;; move, which is the main source of lsp-mode input latency.
+  (setq lsp-ui-doc-show-with-cursor nil)
+  ;; Off for the same reason, plus a worse one: `lsp-ui-doc--make-request'
+  ;; runs on `post-command-hook' and unconditionally does
+  ;; (setq-local track-mouse t) whenever this is non-nil -- ahead of all its
+  ;; other guards, so turning off the cursor path above does not stop it.
+  ;; With `track-mouse' set, every pixel of pointer motion over the frame
+  ;; becomes a command-loop iteration, and `post-command-hook' in an LSP
+  ;; buffer here is 14 functions long (5 from flycheck, plus lsp--post-command,
+  ;; company, smartparens, yasnippet, hl-line, and gcmh cancelling and
+  ;; rescheduling its timer). Moving the mouse across a window runs thousands
+  ;; of those. `K' (`+lookup/documentation') and `lsp-ui-doc-glance' still
+  ;; give documentation on demand.
+  (setq lsp-ui-doc-show-with-mouse nil)
+  (setq lsp-ui-doc-position 'top)
+  (setq lsp-ui-doc-delay 0.5)
+  (setq lsp-ui-doc-max-width 50)
+  (setq lsp-ui-doc-max-height 10)
+  )
 
 (after! projectile
   ;;; Leave `projectile-indexing-method' at Doom's `hybrid'.
@@ -164,10 +159,9 @@
 (after! which-key
   (setq which-key-idle-delay 2.0))
 
-;;; `ccls' and `lsp-disabled-clients' were lsp-mode-only and are gone with it.
-;;; The #ifdef-dimming they disabled was a ccls feature; clangd (what
-;;; `.clangd.sh' actually runs) has no equivalent, so there is nothing to turn
-;;; off under eglot.
+;; Do not hide non-active #ifdefs
+(after! ccls
+  (setq ccls-enable-skipped-ranges nil))
 
 ;;; C/C++ indentation under tree-sitter.
 ;;; c++-ts-mode ignores `c-basic-offset' (which Doom sets from `tab-width');
@@ -216,8 +210,14 @@ With prefix arg DRY-RUN, also simulate pipeline creation."
         :map yaml-ts-mode-map
         :desc "GitLab CI lint" "l" #'+gitlab/ci-lint))
 
-;; Try to get rid of screen flickering
-(add-to-list 'default-frame-alist '(inhibit-double-buffering . t))
+;;; Double-buffering stays ON.
+;;; `inhibit-double-buffering' was set here to stop screen flickering, which is
+;;; backwards: PROBLEMS documents it as the workaround for scroll artifacts on
+;;; *X-based* systems and warns it "will cause flickering of the display in
+;;; some situations". This frame is pgtk on GdkWaylandDisplay, so the problem
+;;; it addresses cannot occur here, and it costs measurable redisplay time --
+;;; timing 120 scroll+redisplay cycles in a live frame gave 1.83ms per
+;;; redisplay with it set against 1.24ms without.
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
@@ -286,98 +286,158 @@ With prefix arg DRY-RUN, also simulate pipeline creation."
 ;;; bounded between idle collections.
 (setq gcmh-idle-delay 15)
 
-;;; clangd wrapper: one client, path resolved per connection.
-;;; Each C/C++ project's `.dir-locals.el' used to register an lsp-mode client
-;;; itself, guarded by (unless (gethash 'clangd-wrapper lsp-clients) ...) with
-;;; the command closed over a `wrapper-path' computed at *registration* time --
-;;; so the first project opened in a session captured the path for every later
-;;; one, and a nil `projectile-project-root' captured the bare relative string
-;;; ".clangd.sh". Eglot removes that failure mode structurally: a
-;;; `eglot-server-programs' CONTACT may be a function, and eglot funcalls it at
-;;; *connect* time (eglot.el:1551), so the path is recomputed per connection
-;;; and there is no registration-time state to go stale.
-;;; Eglot also binds `default-directory' to the project root before spawning
-;;; (eglot.el:1542) and refuses to connect if that directory is missing
-;;; (:1546), which is what `lsp-use-workspace-root-for-server-default-directory'
-;;; had to be turned on for -- `.clangd.sh' passes a *relative*
-;;; --arg-file=.project_settings.json and only works with the root as cwd.
-(after! eglot
-  (defun +clangd/wrapper-path (&optional project)
-    "Absolute path to PROJECT's `.clangd.sh' (default: this buffer's project)."
-    (when-let* ((root (or (and project (project-root project))
+;;; Stop evil-goggles blocking the UI before an operation.
+;;; `:ui ophints' is evil-goggles, and its *blocking* hints work by drawing the
+;;; highlight, calling (sit-for DUR), and only then running the command --
+;;; `evil-goggles--show-blocking-hint', evil-goggles.el:232, with DUR from
+;;; (or evil-goggles-blocking-duration evil-goggles-duration) = 0.1.
+;;; So every delete/change waits 100ms before the edit happens; measured
+;;; directly, that call takes 100.4ms. Nothing in nvim does this, which is
+;;; exactly where the "editing feels sluggish next to nvim" gap comes from.
+;;; Note a keyboard-macro benchmark cannot see this: `sit-for' returns
+;;; immediately while `executing-kbd-macro' is non-nil, so the cost only
+;;; appears in real interactive use (and `sit-for' does cut it short if you
+;;; type through it).
+;;; 0 keeps the hint -- it is drawn, then redisplayed without the wait -- and
+;;; leaves the async hints (yank, paste) alone, since those never blocked.
+(after! evil-goggles
+  (setq evil-goggles-blocking-duration 0))
+
+;;; clangd wrapper: resolve `.clangd.sh' per workspace, not once per session.
+;;; Each C/C++ project's `.dir-locals.el' registers the `clangd-wrapper' client
+;;; itself, but does so inside (unless (gethash 'clangd-wrapper lsp-clients) ...)
+;;; with the command closed over a `wrapper-path' computed from
+;;; `projectile-project-root' at *registration* time. Dir-locals eval forms run
+;;; under lexical binding -- files.el's `hack-one-local-variable' does
+;;; (eval val t) -- so that closure captures whichever project was opened first
+;;; and keeps it for the rest of the session. Every later project then launches
+;;; the first project's script; and when `projectile-project-root' returns nil
+;;; at registration, (concat nil ".clangd.sh") captures the *relative* string
+;;; ".clangd.sh", which `make-process' resolves against whatever
+;;; `default-directory' the connecting timer happens to hold. That is the
+;;; (file-missing "Doing vfork" "No such file or directory") that nothing but an
+;;; Emacs restart clears -- the restart is simply what empties `lsp-clients'.
+;;; Registering here at startup makes the dir-locals `unless' guard find the
+;;; client already present and skip its own registration, so the project
+;;; .dir-locals.el files need no edit; the `lsp-enabled-clients' setq-local at
+;;; the end of those forms sits outside the guard and still applies.
+(after! lsp-clangd
+  (defun +clangd/wrapper-path ()
+    "Absolute path to the current workspace's `.clangd.sh', or nil."
+    (when-let* ((root (or (lsp-workspace-root)
                           (doom-project-root)
                           default-directory)))
       (expand-file-name ".clangd.sh" root)))
 
-  ;; Signature is eglot's: a CONTACT function is called with (INTERACTIVE
-  ;; PROJECT), and PROJECT is the project eglot resolved for this connection --
-  ;; more direct than asking `project-current' again from whatever buffer
-  ;; happens to be current.
-  (defun +clangd/contact (&optional _interactive project)
-    "Command for eglot to run, chosen per connection.
-Falls back to plain clangd in projects that have no wrapper -- the case
-lsp-mode's hardcoded (lambda () t) availability check made undetectable."
-    (let ((wrapper (+clangd/wrapper-path project)))
-      (if (and wrapper (file-executable-p wrapper))
-          (list wrapper)
-        '("clangd"))))
+  (defun +clangd/wrapper-available-p ()
+    "Whether this workspace actually has a runnable `.clangd.sh'."
+    (when-let* ((path (+clangd/wrapper-path)))
+      (file-executable-p path)))
 
-  (set-eglot-client! '(c-mode c-ts-mode c++-mode c++-ts-mode objc-mode)
-                     #'+clangd/contact))
+  ;; The dir-locals version passed (lambda () t) as `lsp-stdio-connection's
+  ;; TEST-COMMAND to "bypass existence check", which is why a bad path failed
+  ;; at vfork instead of lsp-mode reporting the server as unavailable and
+  ;; falling back to plain clangd. Check for real.
+  (dolist (remote? '(nil t))
+    (lsp-register-client
+     (make-lsp-client
+      :new-connection (lsp-stdio-connection
+                       (if remote?
+                           (lambda () (list (file-local-name (+clangd/wrapper-path))))
+                         (lambda () (list (+clangd/wrapper-path))))
+                       #'+clangd/wrapper-available-p)
+      :activation-fn (lsp-activate-on "c" "cpp" "objective-c")
+      :priority 10
+      :remote? remote?
+      :server-id (if remote? 'clangd-wrapper-remote 'clangd-wrapper)
+      ;; `lsp-clients--clangd-library-folders-fn' does not exist in lsp-mode --
+      ;; the .dir-locals.el this client was lifted from named a function that
+      ;; was never defined, so `lsp--try-open-in-library-workspace' hit
+      ;; "void-function" whenever a file outside the project root was visited
+      ;; (a system header jumped to from a definition, typically), leaving the
+      ;; buffer with no xref backend. This is the form clangd's own client uses
+      ;; (lsp-clangd.el:256): treat `lsp-clients-clangd-library-directories'
+      ;; (default '("/usr")) as library rather than project files, so opening a
+      ;; header under it reuses the running workspace instead of starting one.
+      :library-folders-fn (lambda (_workspace) lsp-clients-clangd-library-directories))))
 
-
-;;; Let the clangd wrapper stop its container before it is killed.
-;;; `.clangd.sh' execs `spin', which starts a docker container; the container
-;;; is owned by dockerd, so anything that kills spin without letting it run its
-;;; cleanup leaks a running container with clangd inside it. Eglot is politer
-;;; than lsp-mode here but not politer enough: `eglot-shutdown' sends :shutdown
-;;; (1.5s timeout) and :exit, then hands off to `jsonrpc-shutdown', whose loop
-;;; grants exactly one `(accept-process-output nil 0.1)' before it warns
-;;; "Sentinel ... still hasn't run, deleting it!" and calls `delete-process'
-;;; -- i.e. ~100ms, then SIGKILL. Stopping a container does not fit in 100ms.
-;;; Note `spin' has no `down'/`stop' subcommand, so the process's own exit path
-;;; is the only thing that removes the container.
-;;; Matching is on the command rather than the process name: eglot names its
-;;; processes "EGLOT (project/mode)", so the name says nothing about clangd.
-(after! eglot
+  ;;; Shut the wrapper down gracefully, or its container outlives it.
+  ;;; `lsp-process-kill' is just (kill-process process), i.e. SIGKILL, which
+  ;;; cannot be caught -- so `spin' never reaches the cleanup that stops its
+  ;;; container, and since the container is owned by dockerd rather than by
+  ;;; spin, it keeps running with clangd inside it. Restarting a workspace
+  ;;; therefore leaks one container per restart. Neovim does not hit this
+  ;;; because it closes the server's stdin and sends SIGTERM, letting the
+  ;;; wrapper exit on its own terms; the script is identical, the client's
+  ;;; shutdown is not.
+  ;;; Note `spin' has no `down'/`stop' subcommand -- the process's own exit
+  ;;; path is the only thing that removes the container, so it has to be
+  ;;; allowed to run.
   (defvar +clangd/wrapper-shutdown-grace 10
-    "Seconds to wait, at most, for `.clangd.sh' to stop its container.
-A cap rather than a fixed delay -- the wait ends as soon as the process exits.")
+    "Seconds to let `.clangd.sh' stop its container before resorting to SIGKILL.")
 
   (defun +clangd/wrapper-process-p (process)
     (and (processp process)
-         (seq-some (lambda (arg) (string-suffix-p ".clangd.sh" arg))
-                   (process-command process))))
+         (string-prefix-p "clangd-wrapper" (process-name process))))
 
-  (defun +clangd/stop-wrapper (process)
-    "Ask PROCESS to exit, and wait for it so the sentinel runs.
-Signals the negated pid: Emacs puts every subprocess in its own process group
-\(verified pid == pgid), so this reaches the docker client too. Returning only
-once the process is gone is the point -- `jsonrpc-shutdown' then finds the
-sentinel already run and skips its `delete-process'."
-    (let ((pid (process-id process))
-          (deadline (+ (float-time) +clangd/wrapper-shutdown-grace)))
-      ;; EOF on stdin is what the profile's `attach_stdin' unit watches for.
+  (defun +clangd/terminate-wrapper (process)
+    "Ask PROCESS to shut down, escalating to SIGKILL only if it will not.
+Signals the negated pid: Emacs puts each subprocess in its own process
+group (verified pid == pgid), so this reaches the docker client too."
+    (let ((pid (process-id process)))
+      ;; EOF on stdin is what the profile's `attach_stdin' unit watches for,
+      ;; and what nvim relies on.
       (ignore-errors (process-send-eof process))
       (when pid (ignore-errors (signal-process (- pid) 'TERM)))
-      (while (and (process-live-p process) (< (float-time) deadline))
-        (accept-process-output process 0.05))))
+      ;; Escalate on a timer rather than blocking: `lsp--restart-if-needed'
+      ;; runs from the process sentinel, so a slower exit just defers the
+      ;; restart instead of racing the outgoing container.
+      (run-at-time
+       +clangd/wrapper-shutdown-grace nil
+       (lambda ()
+         (when (process-live-p process)
+           (when pid (ignore-errors (signal-process (- pid) 'KILL)))
+           (ignore-errors (kill-process process)))))))
 
-  (defadvice! +clangd/graceful-jsonrpc-shutdown-a (orig-fn conn &rest args)
+  (defadvice! +clangd/graceful-process-kill-a (orig-fn process)
     "Give the clangd wrapper a chance to stop its container."
-    :around #'jsonrpc-shutdown
-    (when-let* ((proc (ignore-errors (jsonrpc--process conn))))
-      (when (and (+clangd/wrapper-process-p proc) (process-live-p proc))
-        (+clangd/stop-wrapper proc)))
-    (apply orig-fn conn args))
+    :around #'lsp-process-kill
+    (if (and (+clangd/wrapper-process-p process) (process-live-p process))
+        (+clangd/terminate-wrapper process)
+      (funcall orig-fn process)))
 
-  ;; Emacs exiting kills subprocesses outright, so the same signal needs a
-  ;; bounded wait here or the container is orphaned on quit.
+  ;; Emacs exiting kills subprocesses outright, so the same SIGTERM needs a
+  ;; bounded wait here -- without it the signal is sent and the container is
+  ;; orphaned anyway.
   (defun +clangd/stop-wrappers-on-exit ()
-    (dolist (p (seq-filter (lambda (p)
-                             (and (+clangd/wrapper-process-p p)
-                                  (process-live-p p)))
-                           (process-list)))
-      (let ((+clangd/wrapper-shutdown-grace 5))
-        (+clangd/stop-wrapper p))))
+    (let ((procs (seq-filter (lambda (p)
+                               (and (+clangd/wrapper-process-p p)
+                                    (process-live-p p)))
+                             (process-list))))
+      (when procs
+        (dolist (p procs)
+          (ignore-errors (process-send-eof p))
+          (when-let* ((pid (process-id p)))
+            (ignore-errors (signal-process (- pid) 'TERM))))
+        ;; Cap the delay on quitting Emacs; containers usually stop well inside
+        ;; this, and anything slower is not worth blocking the user's exit for.
+        (let ((deadline (+ (float-time) 5)))
+          (while (and (< (float-time) deadline)
+                      (seq-some #'process-live-p procs))
+            (sleep-for 0.1))))))
   (add-hook 'kill-emacs-hook #'+clangd/stop-wrappers-on-exit))
+
+;;; Start language servers in their own workspace root.
+;;; Default is nil, which hands the server process whatever `default-directory'
+;;; the current buffer had when the connection was made -- and lsp-mode connects
+;;; from timers (`lsp-deferred'), so that buffer is not reliably the one being
+;;; opened. `.clangd.sh' cannot tolerate this: it execs
+;;;   spin up clangd cdb --clean --raw --arg-file=.project_settings.json
+;;; with a *relative* --arg-file, so it only resolves when the process cwd is
+;;; the project root. A wrong cwd also turns into
+;;; (file-missing "Setting current directory" ...) if that directory has since
+;;; been removed (a docker build wiping out/, a branch switch).
+;;; Applies to every client, not just clangd; workspace root is the right cwd
+;;; for all of them.
+(after! lsp-mode
+  (setq lsp-use-workspace-root-for-server-default-directory t))
