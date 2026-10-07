@@ -54,31 +54,29 @@
                  "[/\\\\]libraries\\'"))
     (add-to-list 'lsp-file-watch-ignored-directories dir)))
 
-;;; FIX: Emacs 31.1 regression -- `delete-process' on a subprocess that's
-;;; killed while mid-write of multi-byte UTF-8 output throws "Attempt to
-;;; store non-ASCII char into multibyte string" from inside Emacs's own C
-;;; process-cleanup code, with zero package code involved (reproduced with a
-;;; bare `make-process' + `delete-process', no diff-hl/consult/etc in the
-;;; call stack at all). Any package that cancels an in-flight async
-;;; subprocess -- diff-hl-flydiff-mode re-diffing on every edit,
-;;; consult-ripgrep restarting the search on every keystroke, presumably
-;;; more -- hits this whenever the killed process's output happens to
-;;; contain non-ASCII text, which shows up as a bare "Error running timer"
-;;; with no useful context. Since the OS-level process is already dead by
-;;; the time this throws, the failed "flush trailing output" is safe to
-;;; discard; only its exception needs stopping. Confirmed with a 40-run
-;;; race (kill timed at 1-15ms into a `rg` search over multi-byte content):
-;;; 38/40 failures before this advice, 0/40 after, for both diff-hl (with
-;;; Doom's default async settings, unmodified) and raw ripgrep processes.
-(defadvice! +fix-emacs31-nonascii-delete-process-a (orig-fn proc &rest args)
-  :around #'delete-process
-  (condition-case err
-      (apply orig-fn proc args)
-    (error
-     (if (equal (error-message-string err)
-                "Attempt to store non-ASCII char into multibyte string")
-         nil
-       (signal (car err) (cdr err))))))
+;;; FIX: Emacs 31.1 + non-English gettext fallback breaks all process-death
+;;; handling. process.c `status_message' takes the localized strsignal()
+;;; text, decodes it to multibyte and `aset's a downcased first letter into
+;;; it; 31.1's `aset' (data.c:2668) now refuses non-ASCII into a multibyte
+;;; string. LANG is en_US.UTF-8 but LANGUAGE=en_US:en_GB:ru, and glibc ships
+;;; no en_US/en_GB catalog, so strsignal(9) = "Убито", strsignal(13) =
+;;; "Обрыв канала". Every C path that formats a dead process's status then
+;;; signals "Attempt to store non-ASCII char into multibyte string":
+;;; - `process-send-string' to a dead process (send_process, process.c:6728)
+;;;   -- seen as "LSP :: Sending to process failed ..." after rust-analyzer
+;;;   was SIGKILLed;
+;;; - `delete-process' on a killed subprocess (diff-hl, consult-ripgrep);
+;;; - status_notify (process.c:7916), so sentinels never run and lsp-mode
+;;;   never learns its server died.
+;;; glibc ignores LANGUAGE when the LC_MESSAGES category is "C", and Emacs
+;;; applies this variable via setlocale(LC_MESSAGES) before strsignal().
+;;; Verified in `emacs -Q --batch' with LANGUAGE=en_US:en_GB:ru: SIGKILLed
+;;; `sleep' -> sentinel never called + aset error from process-send-string;
+;;; with this setq -> sentinel gets "killed", send errors normally; the
+;;; delete-process-mid-output race fails 3/3 without it, 0/5 with it. This
+;;; replaces an earlier `delete-process' advice that only swallowed one of
+;;; the symptoms.
+(setq system-messages-locale "C")
 
 (after! writeroom-mode
   (setq
