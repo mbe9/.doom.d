@@ -99,7 +99,24 @@
         lsp-lens-enable nil                   ; codeLens requests + refresh
         lsp-modeline-code-actions-enable nil  ; codeAction at point, per move
         lsp-eldoc-enable-hover nil            ; hover via eldoc, per move
-        lsp-idle-delay 0.75))
+        lsp-idle-delay 0.75)
+
+  ;;; Indent with tree-sitter, not with clangd.
+  ;;; With this on, lsp-mode does
+  ;;;   (add-function :override (local 'indent-region-function) #'lsp-format-region)
+  ;;; (lsp-mode.el:4353), replacing `treesit-indent-region' with a *synchronous*
+  ;;; textDocument/rangeFormatting round-trip. Measured against the running
+  ;;; clangd on a 40-line region: 2ms, 28ms and 48ms in three live buffers --
+  ;;; and here that round-trip goes through `.clangd.sh' into a docker
+  ;;; container, so it is a process hop, not an in-Emacs call. Everything
+  ;;; routed through `indent-region' pays it: evil's `=' operator, `==', `=ap',
+  ;;; reindent-on-paste, `indent-region' itself.
+  ;;; Turning it off also removes a contradiction: `c-ts-mode-indent-offset' 4
+  ;;; and `c-ts-mode-indent-style' 'bsd are set below to match the projects'
+  ;;; .clang-format, and clangd-side formatting was overriding them.
+  ;;; `SPC c f' (`+format/region-or-buffer') still formats via apheleia and
+  ;;; clang-format, which is where whole-file formatting belongs.
+  (setq lsp-enable-indentation nil))
 
   ;; (setq lsp-idle-delay 1.0
   ;;       lsp-lens-enable 't
@@ -439,3 +456,41 @@ group (verified pid == pgid), so this reaches the docker client too."
 ;;; for all of them.
 (after! lsp-mode
   (setq lsp-use-workspace-root-for-server-default-directory t))
+
+;;; Profile-driven fixes for C++ editing latency.
+;;; A 6878-sample CPU profile (1ms sampling) taken while editing C++ put 30.6%
+;;; of the time in `redisplay_internal' itself -- C drawing, no elisp under it --
+;;; and the rest in a handful of things that run on every command. These two are
+;;; the ones with no behavioural downside; see below for the ones that trade
+;;; something off.
+
+;;; doom-modeline re-walks the filesystem on every modeline render.
+;;; `doom-modeline--in-git-worktree-p' (doom-modeline-segments.el:689) calls
+;;; `locate-dominating-file' + `file-regular-p' with no caching, and the vcs
+;;; segment calls it at :771 on every render, i.e. every command. It accounted
+;;; for 95 of the profile's 97 `locate-dominating-file' samples (1.4% of total).
+;;; Note doom-modeline's own `doom-modeline--vcs' cache does not cover this call.
+;;; Whether a file sits in a git worktree cannot change for the life of the
+;;; buffer short of the file moving, so cache it per buffer.
+(after! doom-modeline
+  (defvar-local +doom-modeline--worktree-cache 'unset)
+  (defadvice! +doom-modeline/cache-worktree-check-a (orig-fn)
+    :around #'doom-modeline--in-git-worktree-p
+    (if (eq +doom-modeline--worktree-cache 'unset)
+        (setq +doom-modeline--worktree-cache (funcall orig-fn))
+      +doom-modeline--worktree-cache))
+  ;; Drop the cache if the buffer starts pointing at a different file.
+  (add-hook! 'after-set-visited-file-name-hook
+    (defun +doom-modeline/reset-worktree-cache-h ()
+      (setq +doom-modeline--worktree-cache 'unset))))
+
+;;; Show flycheck errors in the echo area, not in a popup.
+;;; `flycheck-display-errors-function' was `flycheck-popup-tip-show-popup',
+;;; which builds a popup overlay via `popup-create' every time point lands on a
+;;; diagnostic -- 151 samples, 2.2% of the profile, and it forces a redisplay on
+;;; top. With clangd diagnostics in C++ that fires constantly while moving
+;;; through code. The echo-area function conveys the same text for free;
+;;; `SPC c x' (`flycheck-list-errors') still gives the full list.
+(after! flycheck
+  (setq flycheck-display-errors-function
+        #'flycheck-display-error-messages-unless-error-list))
