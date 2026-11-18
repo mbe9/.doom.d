@@ -425,6 +425,13 @@ group (verified pid == pgid), so this reaches the docker client too."
   ;; bounded wait here -- without it the signal is sent and the container is
   ;; orphaned anyway.
   (defun +clangd/stop-wrappers-on-exit ()
+    ;; This hook precedes `lsp--global-teardown'. Mark every wrapper workspace
+    ;; before EOF/SIGTERM: `sleep-for' dispatches process sentinels, and without
+    ;; this flag `lsp--handle-process-exit' asks to restart during Emacs exit.
+    (dolist (workspace (lsp--session-workspaces (lsp-session)))
+      (when (memq (lsp--client-server-id (lsp--workspace-client workspace))
+                  '(clangd-wrapper clangd-wrapper-remote))
+        (setf (lsp--workspace-shutdown-action workspace) 'shutdown)))
     (let ((procs (seq-filter (lambda (p)
                                (and (+clangd/wrapper-process-p p)
                                     (process-live-p p)))
